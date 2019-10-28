@@ -1,4 +1,4 @@
-#![no_std]
+//#![no_std]
 #![allow(dead_code)]
 
 /// Strategy:
@@ -30,7 +30,7 @@ pub struct CircularBuffer {
 }
 
 impl CircularBuffer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         CircularBuffer {
             ring : [0x0; RING_BUFFER_SZ],
             head : 0,
@@ -64,12 +64,14 @@ impl CircularBuffer {
     pub fn enqueue(&mut self, val : u8) {
         self.ring[self.tail] = val;
         self.tail = (self.tail + 1) % self.ring.len();
+        self.size += 1;
     }
 
     fn dequeue(&mut self) -> Option<u8> {
         if self.has_elements() {
             let val = self.ring[self.head];
             self.head = (self.head + 1) % self.ring.len();
+            self.size -= 1;
             Some(val)
         }
         else {
@@ -343,5 +345,64 @@ mod tests {
         }
 
         assert_eq!(buf.len(), 0);
+    }
+
+    #[test]
+    fn test_eq_dequeue() {
+        let mut cb = CircularBuffer::new();
+        cb.enqueue(0x7E);
+        cb.enqueue(0x04);
+        cb.enqueue(0x00);
+        cb.enqueue(0x81);
+        cb.enqueue(0);
+        cb.enqueue(0);
+        cb.enqueue(0x00);
+        cb.enqueue(0x00);
+        cb.enqueue(0xFF);
+        cb.enqueue(0xFF);
+        cb.enqueue(0xBD);
+        assert_eq!(cb.len(), 11);
+        //*****
+        cb.enqueue(0x7E);
+        cb.enqueue(0x04);
+        cb.enqueue(0x00);
+        cb.enqueue(0x81);
+        cb.enqueue(1);
+        cb.enqueue(0);
+        cb.enqueue(0x00);
+        cb.enqueue(0x00);
+        cb.enqueue(0xFF);
+        cb.enqueue(0xFF);
+        cb.enqueue(0xBD);
+        assert_eq!(cb.len(), 11*2);
+        //*****
+        cb.enqueue(0x7E);
+        cb.enqueue(0x04);
+        cb.enqueue(0x00);
+        cb.enqueue(0x81);
+        cb.enqueue(2);
+        cb.enqueue(0);
+        cb.enqueue(0x00);
+        cb.enqueue(0x00);
+        cb.enqueue(0xFF);
+        cb.enqueue(0xFF);
+        cb.enqueue(0xBD);
+        assert_eq!(cb.len(), 11*3);
+        //*****
+        cb.enqueue(0x7E);
+        cb.enqueue(0x04);
+        cb.enqueue(0x00);
+        cb.enqueue(0x81);
+        cb.enqueue(3);
+        cb.enqueue(0);
+        cb.enqueue(0x00);
+        cb.enqueue(0x00);
+        cb.enqueue(0xFF);
+        cb.enqueue(0xFF);
+        cb.enqueue(0xBD);
+        assert_eq!(cb.len(), 11*4);
+        //
+        let mut out_buf = [0u8;0x10];
+        assert_eq!(cb.dequeue_slice(&mut out_buf), 0x10);
     }
 }
